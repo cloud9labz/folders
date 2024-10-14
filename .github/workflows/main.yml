@@ -1,7 +1,9 @@
 name: Folder Info  
   
 on:  
-  workflow_dispatch:
+  push:  
+   branches:  
+    - main  
   
 jobs:  
   folder-info:  
@@ -19,7 +21,7 @@ jobs:
         fi  
        done > folder_info.csv  
     - name: Upload folder info  
-      uses: actions/upload-artifact@v3  
+      uses: actions/upload-artifact@v2  
       with:  
        name: folder_info.csv  
        path: folder_info.csv
