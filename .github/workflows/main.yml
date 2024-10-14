@@ -9,10 +9,21 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Gather folder information
         run: |
+          echo "Checking git version..."
+          git --version
+          
+          echo "Listing migration directory..."
+          ls migration
+          
+          echo "Running git ls-tree..."
           folders=$(git ls-tree -r --name-only HEAD migration | grep -E '^[^0-9]+|^[0-9]{14}$')
+          echo "Folders: $folders"
+          
           while IFS= read -r folder; do
             commit_time=$(git log -1 --format=%ct -- $folder)
             echo "$folder,$(date -d @$commit_time '+%Y-%m-%d %H:%M:%S')" 
