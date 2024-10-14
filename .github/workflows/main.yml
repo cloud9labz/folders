@@ -1,9 +1,7 @@
 name: Folder Info  
   
 on:  
-  push:  
-   branches:  
-    - main  
+  workflow_dispatch:
   
 jobs:  
   folder-info:  
