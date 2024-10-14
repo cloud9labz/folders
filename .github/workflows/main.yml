@@ -18,10 +18,10 @@ jobs:
           git --version
           
           echo "Listing migration directory..."
-          ls migration
+          ls Migration
           
           echo "Running git ls-tree..."
-          folders=$(git ls-tree -r --name-only HEAD migration | grep -E '^[^0-9]+|^[0-9]{14}$')
+          folders=$(git ls-tree -r --name-only HEAD Migration | grep -E '^[^0-9]+|^[0-9]{14}$')
           echo "Folders: $folders"
           
           while IFS= read -r folder; do
