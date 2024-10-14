@@ -15,17 +15,29 @@ jobs:
 
       - name: Get folder info
         run: |
-          folders=$(git ls-tree -d --name-only HEAD Migration)
+          #!/bin/bash
+
+          # Set the folder path and filter criteria
+          FOLDER_PATH="Migration"
+          FILTER_CRITERIA="^[0-9]{14}$"
+
+          # Get the repository's contents
+          folders=$(git ls-tree -d --name-only HEAD "$FOLDER_PATH")
+
+          # Initialize the output file
+          echo "Folder Name,Commit Time" > folder_info.csv
+
+          # Loop through each folder and extract information
           for folder in $folders; do
             if [[ ! $folder =~ ^[0-9]+$ ]]; then
               for subfolder in "$folder"/*; do
-                if [[ -d $subfolder ]] && [[ "$(basename "$subfolder")" =~ ^[0-9]{14}$ ]]; then
+                if [[ -d $subfolder ]] && [[ "$(basename "$subfolder")" =~ $FILTER_CRITERIA ]]; then
                   commit_time=$(git log -1 --format=%ad --date=unix "$subfolder")
-                  echo "$(basename "$folder"),$(basename "$subfolder"),$commit_time"
+                  echo "$(basename "$folder"),$commit_time" >> folder_info.csv
                 fi
               done
             fi
-          done > folder_info.csv
+          done
 
       - name: Upload folder info
         uses: actions/upload-artifact@v3
