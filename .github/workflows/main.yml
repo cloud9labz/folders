@@ -1,36 +1,83 @@
-name: Folder List
+name: Run Python Script to List Folders
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main  # Change this to your default branch if needed
 
 jobs:
-  folder-list:
+  run-script:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
         with:
-          fetch-depth: 0
+          python-version: '3.8'  # You can specify the Python version you need
 
-      - name: Gather folder information
+      - name: Install Git
+        run: sudo apt-get install git
+
+      - name: Run Python Script
         run: |
-          echo "Checking git version..."
-          git --version
-          
-          echo "Listing migration directory..."
-          ls Migration
-          
-          echo "Running git ls-tree..."
-          folders=$(git ls-tree -r --name-only HEAD Migration | grep -E '^[^0-9]+|^[0-9]{14}$')
-          echo "Folders: $folders"
-          
-          while IFS= read -r folder; do
-            commit_time=$(git log -1 --format=%ct -- $folder)
-            echo "$folder,$(date -d @$commit_time '+%Y-%m-%d %H:%M:%S')" 
-          done <<< "$folders" > folder_list.csv
+          # Create the Python script
+          cat << 'EOF' > list_folders.py
+import os
+import subprocess
+import csv
+import re
 
-      - name: Upload output
+# Function to get the last commit time of a folder
+def get_commit_time(folder_path):
+    try:
+        commit_time = subprocess.check_output(
+            ['git', 'log', '-1', '--format=%cd', '--', folder_path],
+            encoding='utf-8'
+        ).strip()
+        return commit_time
+    except subprocess.CalledProcessError:
+        return None
+
+# Regex for 14-digit numbers
+fourteen_digit_regex = re.compile(r'^\d{14}$')
+
+# Collecting folders
+folders = []
+
+# Check the 'migration' folder
+migration_folder = 'migration'
+
+if os.path.exists(migration_folder):
+    for item in os.listdir(migration_folder):
+        item_path = os.path.join(migration_folder, item)
+        
+        if os.path.isdir(item_path) and not item.isdigit():
+            for sub_item in os.listdir(item_path):
+                sub_item_path = os.path.join(item_path, sub_item)
+                
+                if os.path.isdir(sub_item_path) and fourteen_digit_regex.match(sub_item):
+                    commit_time = get_commit_time(item_path)
+                    if commit_time:
+                        folders.append((item, sub_item, commit_time))
+
+# Writing to CSV
+output_file = 'folders_with_commit_times.csv'
+with open(output_file, 'w', newline='') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['Non-numerical Folder', '14-digit Folder', 'Commit Time'])
+    writer.writerows(folders)
+
+print(f"CSV file '{output_file}' created successfully.")
+EOF
+
+          # Run the Python script
+          python list_folders.py
+
+      - name: Upload CSV
         uses: actions/upload-artifact@v3
         with:
-          name: folder_list.csv
-          path: folder_list.csv
+          name: folders_with_commit_times
+          path: folders_with_commit_times.csv
