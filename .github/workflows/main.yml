@@ -1,52 +1,25 @@
-name: List Folders and Commit Times
+name: Folder List
 
 on:
-  push:
-    branches:
-      - main  # Change to your default branch if necessary
+  workflow_dispatch:
 
 jobs:
-  list_folders:
+  folder-list:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: List Folders and Commit Times
+      - name: Gather folder information
         run: |
-          # Create a temporary file for CSV output
-          output_file="folders_with_commit_times.csv"
-          echo "Non-numerical Folder,14-digit Folder,Commit Time" > $output_file
+          folders=$(git ls-tree -r --name-only HEAD migration | grep -E '^[^0-9]+|^[0-9]{14}$')
+          while IFS= read -r folder; do
+            commit_time=$(git log -1 --format=%ct -- $folder)
+            echo "$folder,$(date -d @$commit_time '+%Y-%m-%d %H:%M:%S')" 
+          done <<< "$folders" > folder_list.csv
 
-          # Check inside the migration folder
-          migration_folder="migration"
-          
-          # Check if the migration folder exists
-          if [ -d "$migration_folder" ]; then
-            # Loop through directories inside migration
-            for dir in "$migration_folder"/*; do
-              if [ -d "$dir" ]; then
-                if [[ ! "$(basename "$dir")" =~ ^[0-9]+$ ]]; then
-                  for sub_dir in "$dir"/*; do
-                    if [ -d "$sub_dir" ] && [[ "$(basename "$sub_dir")" =~ ^[0-9]{14}$ ]]; then
-                      # Get the last commit time for the parent directory
-                      commit_time=$(git log -1 --format="%cd" -- "$dir")
-                      echo "$(basename "$dir"),$(basename "$sub_dir"),$commit_time" >> $output_file
-                    fi
-                  done
-                fi
-              fi
-            done
-          else
-            echo "Migration folder does not exist."
-          fi
-
-          # Output the result
-          cat $output_file
-
-      - name: Upload CSV
+      - name: Upload output
         uses: actions/upload-artifact@v3
         with:
-          name: folders_with_commit_times
-          path: folders_with_commit_times.csv
+          name: folder_list.csv
+          path: folder_list.csv
