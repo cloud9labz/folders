@@ -1,0 +1,42 @@
+name: List Folders and Commit Times
+
+on:
+  push:
+    branches:
+      - main  # Change to your default branch if necessary
+
+jobs:
+  list_folders:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: List Folders and Commit Times
+        run: |
+          # Create a temporary file for CSV output
+          output_file="folders_with_commit_times.csv"
+          echo "Non-numerical Folder,14-digit Folder,Commit Time" > $output_file
+
+          # Loop through directories
+          for dir in */; do
+            if [[ ! "$dir" =~ ^[0-9]+/ ]]; then
+              for sub_dir in "$dir"*/; do
+                if [[ "$(basename "$sub_dir")" =~ ^[0-9]{14}$ ]]; then
+                  # Get the last commit time for the parent directory
+                  commit_time=$(git log -1 --format="%cd" -- "$dir")
+                  echo "$(basename "$dir"),$(basename "$sub_dir"),$commit_time" >> $output_file
+                fi
+              done
+            fi
+          done
+
+          # Output the result
+          cat $output_file
+
+      - name: Upload CSV
+        uses: actions/upload-artifact@v3
+        with:
+          name: folders_with_commit_times
+          path: folders_with_commit_times.csv
